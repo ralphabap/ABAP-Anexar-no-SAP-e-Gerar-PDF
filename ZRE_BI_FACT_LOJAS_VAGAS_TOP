@@ -1,0 +1,173 @@
+*----------------------------------------------------------------------*
+*   INCLUDE ZRE_BI_FACT_LOJAS_VAGAS_TOP                                *
+*----------------------------------------------------------------------*
+
+
+* Tabelas transparentes
+TABLES: tiv80,
+        bkpf,
+        bseg,
+        viob01,
+        vimimv,
+        vieige,
+        bp000,
+        knb1,
+        kna1.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+* Tipos
+TYPES: BEGIN OF ty_docs_cri,
+         bukrs  TYPE bseg-bukrs,
+         belnr  TYPE bseg-belnr,
+         gjahr  TYPE bseg-gjahr,
+       END OF ty_docs_cri,
+
+       BEGIN OF ty_excl,
+         fcode   TYPE rsmpe-func,
+       END OF ty_excl.
+* <<< RLH - Alterações - 18/07/2011 - Fim
+
+* Tabelas internas
+DATA: BEGIN OF i_tiv80 OCCURS 0,
+        verrktme LIKE tiv80-verrktme,
+        kostkto LIKE tiv80-kostkto,
+        verrktmv LIKE tiv80-verrktmv,
+      END OF i_tiv80.
+
+DATA: i_tiv80_aux LIKE i_tiv80 OCCURS 0 WITH HEADER LINE.
+
+DATA: i_bkpf LIKE bkpf OCCURS 0 WITH HEADER LINE.
+
+DATA: BEGIN OF i_bseg OCCURS 0.
+        INCLUDE STRUCTURE bseg.
+DATA:   budat LIKE bkpf-budat,
+        bldat LIKE bkpf-bldat,
+        intnum(6),
+        verrktme LIKE tiv80-verrktme,
+        kostkto LIKE tiv80-kostkto,
+        verrktmv LIKE tiv80-verrktmv,
+        tcode LIKE bkpf-tcode,
+        smenr LIKE vimimv-smenr,
+        sempsl LIKE rfvipos-sempsl,
+        zznmfan LIKE vimimv-zznmfan,
+        xbewart LIKE tzb0t-xbewart,
+      END OF i_bseg.
+
+DATA: i_bseg_aux  LIKE i_bseg OCCURS 0 WITH HEADER LINE,
+      i_bseg_1300 LIKE i_bseg OCCURS 0 WITH HEADER LINE.
+
+DATA: BEGIN OF it_desc_meses OCCURS 0,
+        monat LIKE bsid-monat,
+        descricao(9),
+      END OF it_desc_meses.
+
+DATA: BEGIN OF it_smenr OCCURS 0,
+        smenr LIKE vimimv-smenr,
+      END OF it_smenr.
+
+DATA: BEGIN OF it_tzb0t OCCURS 0,
+        sbewart LIKE tzb0t-sbewart,
+        xbewart LIKE tzb0t-xbewart,
+      END OF it_tzb0t.
+
+DATA aux_i_bseg LIKE i_bseg OCCURS 0 WITH HEADER LINE.
+
+DATA: BEGIN OF i_viob01 OCCURS 0,
+        intreno LIKE viob01-intreno,
+      END OF i_viob01.
+
+DATA: BEGIN OF cliente OCCURS 0,
+        tcode LIKE bkpf-tcode,
+        zfbdt LIKE bseg-zfbdt,
+        kunnr LIKE bseg-kunnr,
+        gsber(4),
+        dmbtr LIKE bseg-dmbtr,
+        intnum(6),
+*       zterm like knb1-zterm,
+        vbewa LIKE bseg-vbewa,
+      END OF cliente.
+
+DATA: cliente2      LIKE cliente OCCURS 0 WITH HEADER LINE,
+      cliente_1300  LIKE cliente OCCURS 0 WITH HEADER LINE,
+      cliente2_1300 LIKE cliente OCCURS 0 WITH HEADER LINE.
+
+DATA: BEGIN OF itab OCCURS 0,
+        name1 LIKE kna1-name1,
+        belnr LIKE bseg-belnr,
+        smenr LIKE vimimv-smenr,
+        sempsl LIKE rfvipos-sempsl,
+        dmbtr LIKE bseg-dmbtr,
+        shkzg LIKE bseg-shkzg,
+        zznmfan LIKE vimimv-zznmfan,
+        xbewart LIKE tzb0t-xbewart,
+        vbewa LIKE bseg-vbewa,
+        gjahr LIKE bseg-gjahr,
+        buzei LIKE bseg-buzei,
+        sgtxt LIKE bseg-sgtxt,
+      END OF itab.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+DATA: i_smart    TYPE TABLE OF zfielvsub WITH HEADER LINE,
+      i_out      TYPE ssfcrescl,            "Tabela de retorno
+      i_otf      TYPE TABLE OF itcoo,       "OTF - PDF
+      i_pdf      TYPE TABLE OF tline WITH HEADER LINE,
+      t_bdcdata  LIKE bdcdata    OCCURS 0 WITH HEADER LINE,
+      i_docs_cri TYPE TABLE OF ty_docs_cri WITH HEADER LINE,
+      i_excl     TYPE TABLE OF ty_excl WITH HEADER LINE.
+* <<< RLH - Alterações - 18/07/2011 - Fim
+
+* variáveis
+DATA: aux_rfvipos LIKE rfvipos,
+      aux_bseg LIKE i_bseg,
+      intnum(6),
+      v_dt_venc(10),
+      v_lojas_vagas VALUE 'S',
+      v_linhas_bseg TYPE i VALUE 0,
+      v_achou_bseg VALUE 'N',
+      v_mostrar_tit VALUE 'S',
+      v_bukrs LIKE bkpf-bukrs VALUE '',
+* >>> RLH - Alterações - 18/07/2011 - Início
+      v_smart_ok      TYPE c,
+      v_size_bin      TYPE i.    " tamanho do arquivo
+* <<< RLH - Alterações - 18/07/2011 - FIm
+
+* constantes
+CONSTANTS: c_lojas_vagas LIKE bseg-hkont VALUE '0081021001',
+           c_gsber(4) VALUE '0001',
+           c_sspras1  LIKE tzb0t-sspras VALUE 'P',
+           c_sspras2  LIKE tzb0t-sspras VALUE 'E',
+           c_rantyp   LIKE tzb0t-rantyp VALUE '3',
+           c_mensagem(50) VALUE 'Encargos Específicos Lojas Vagas',
+           c_fundo_promocao LIKE bseg-hkont VALUE '31031008',
+           c_max_tela TYPE i VALUE 180.
+
+DATA i_vieige LIKE vieige OCCURS 0 WITH HEADER LINE.
+
+* parâmetros de selecção
+*selection-screen: begin of block s_rel2 with frame title text-004.
+*PARAMETERS : CK_BATCH AS CHECKBOX.
+*selection-screen: end of block s_rel2.
+
+SELECTION-SCREEN: BEGIN OF BLOCK s_sel WITH FRAME TITLE text-002.
+PARAMETERS: p_bukrs LIKE bkpf-bukrs OBLIGATORY MEMORY ID buk,
+            p_swenr LIKE viob01-swenr OBLIGATORY MEMORY ID weh.
+
+SELECT-OPTIONS: p_budat FOR bkpf-budat,
+                s_smenr FOR vimimv-smenr.
+
+PARAMETERS: p_zfbdt LIKE bseg-zfbdt OBLIGATORY.
+
+SELECTION-SCREEN: END OF BLOCK s_sel.
+
+SELECTION-SCREEN: BEGIN OF BLOCK s_rel WITH FRAME TITLE text-003.
+
+PARAMETERS: p_rel_ul RADIOBUTTON GROUP r_re DEFAULT 'X',
+            p_rel_vg RADIOBUTTON GROUP r_re.
+
+SELECTION-SCREEN: END OF BLOCK s_rel.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+SELECTION-SCREEN: BEGIN OF BLOCK a WITH FRAME TITLE text-001.
+PARAMETERS : p_show AS CHECKBOX.
+SELECTION-SCREEN: END OF BLOCK a.
+* <<< RLH - Alterações - 18/07/2011 - Fim

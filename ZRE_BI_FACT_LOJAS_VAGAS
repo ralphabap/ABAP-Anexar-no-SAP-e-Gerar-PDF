@@ -1,0 +1,66 @@
+REPORT zre_bi_fact_lojas_vagas MESSAGE-ID zre
+  NO STANDARD PAGE HEADING LINE-SIZE 180.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+* INCLUDE zbdcrecx1.                      "forms para o BI
+* <<< RLH - Alterações - 18/07/2011 - Fim
+
+INCLUDE zre_bi_fact_lojas_vagas_top.
+INCLUDE zre_bi_fact_lojas_vagas_f01.
+
+START-OF-SELECTION.
+
+  PERFORM select_data.
+
+  PERFORM add_values.
+
+  PERFORM prepara_relatorio.
+
+  IF i_bseg[] IS INITIAL AND i_bseg_1300 IS INITIAL.
+    MESSAGE i001.
+    EXIT.
+  ENDIF.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+**If ck_batch eq 'X'.
+*  PERFORM generate_batch.
+**ENDIF.
+
+  IF p_rel_vg = 'X'.
+
+    REFRESH i_excl[].
+
+    CLEAR i_excl.
+    i_excl-fcode = 'CONTAB'.
+    APPEND i_excl.
+
+    CLEAR i_excl.
+    i_excl-fcode = 'EXTRAIR'.
+    APPEND i_excl.
+
+    SET PF-STATUS 'ZPF_STATUS_1' EXCLUDING i_excl.
+
+  ENDIF.
+* <<< RLH - Alterações - 18/07/2011 - Fim
+
+  PERFORM show_list.
+
+* >>> RLH - Alterações - 18/07/2011 - Início
+AT USER-COMMAND.
+  PERFORM user_command_rel.
+* <<< RLH - Alterações - 18/07/2011 - Fim
+
+* Drill down
+AT LINE-SELECTION.
+  PERFORM line-selection.
+
+
+AT SELECTION-SCREEN ON BLOCK s_sel.
+  IF p_bukrs = 'SH22'.
+    MESSAGE e007 WITH 'SH22'.
+  ENDIF.
+
+* Cabeçalho
+TOP-OF-PAGE.
+
+  PERFORM cabecalho.
